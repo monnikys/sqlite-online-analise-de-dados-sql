@@ -1,0 +1,253 @@
+SELECT * FROM produtos;
+
+SELECT COUNT(*) as Qtd_Categorias FROM categorias;
+
+SELECT COUNT(*) as Qtd_Clientes  FROM clientes;
+
+SELECT COUNT(*) as Qtd_Fornecedores  FROM fornecedores;
+
+SELECT COUNT(*) as Qtd_ItensVenda  FROM itens_venda;
+
+SELECT COUNT(*) as Qtd_Marcas  FROM marcas;
+
+SELECT COUNT(*) as Qtd_Produtos  from produtos;
+
+SELECT COUNT(*) as Qtd_Vendas  from vendas;
+
+/* PRODUTOS DISTINTOS QUE EXISTEM */
+SELECT DISTINCT nome_produto
+FROM produtos;
+
+/* QTD DE PRODUTOS DISTINTOS QUE EXISTEM */
+SELECT COUNT(DISTINCT nome_produto) AS QTD_PRODUTOS_DISTINTOS
+FROM produtos;
+
+/* UPDATE DOS PRODUTOS*/
+UPDATE produtos
+SET preco = 99.99
+WHERE nome_produto = 'Bola de Futebol';
+
+UPDATE produtos
+SET preco = 7.90
+WHERE nome_produto = 'Chocolate';
+
+UPDATE produtos
+SET preco = 2999.99
+WHERE nome_produto = 'Celular';
+
+UPDATE produtos
+SET preco = 59.90
+WHERE nome_produto = 'Livro de Ficção';
+
+UPDATE produtos
+SET preco = 79.90
+WHERE nome_produto = 'Camisa';
+
+/* LIMITANDO O SELECT EM 5 */
+SELECT * FROM vendas
+LIMIT 5;
+
+/* VERIFICANDO OS ANOS DISTINTOS DAS VENDAS*/
+SELECT DISTINCT(strftime('%Y',data_venda)) AS ANO
+FROM vendas
+ORDER BY ANO;
+
+/* COM O TOTAL DE VENDAS POR ANO*/
+SELECT strftime('%Y',data_venda) as ANO, COUNT(id_venda) AS TOTAL_VENDAS
+FROM vendas
+GROUP BY ANO
+ORDER BY ANO;
+
+/* COM O ANO E O MES */
+SELECT strftime('%Y',data_venda) as ANO, strftime('%m', data_venda) AS MES, COUNT(id_venda) AS TOTAL_VENDAS
+FROM vendas
+GROUP BY ANO, MES
+ORDER BY ANO;
+
+/* FILTRANDO MESES SOLICITADOS */
+SELECT strftime('%Y',data_venda) as ANO, strftime('%m', data_venda) AS MES, COUNT(id_venda) AS TOTAL_VENDAS
+FROM vendas
+WHERE MES = '01' OR MES = '11' OR MES = '12'
+GROUP BY ANO, MES
+ORDER BY ANO;
+
+/* PAPEL DOS FORNECEDORES NA BF*/
+
+ SELECT strftime('%Y/%m', v.data_venda) AS ANO_MES, f.nome AS NOME_FORNECEDOR, COUNT(iv.produto_id) AS QTD_VENDAS
+ FROM itens_venda iv
+ JOIN vendas v ON v.id_venda = iv.venda_id
+ JOIN produtos p ON p.id_produto = iv.produto_id
+ JOIN fornecedores f on f.id_fornecedor = p.fornecedor_id
+ WHERE strftime('%m', v.data_venda) = '11'
+ GROUP BY NOME_FORNECEDOR, ANO_MES
+ ORDER BY ANO_MES, QTD_VENDAS;
+ 
+ /* CATEGORIAS DE PRODUTOS NA BF */
+ 
+ SELECT strftime('%Y/%m', v.data_venda) as ANO_MES, c.nome_categoria AS NOME_CATEGORIA, COUNT(iv.produto_id) AS QTD_VENDAS
+ FROM itens_venda iv
+ JOIN vendas v ON v.id_venda = iv.venda_id
+ JOIN produtos p ON p.id_produto = iv.produto_id
+ JOIN categorias c ON c.id_categoria = p.categoria_id
+ WHERE strftime('%m', v.data_venda) = '11'
+ GROUP BY NOME_CATEGORIA, ANO_MES
+ ORDER BY ANO_MES, QTD_VENDAS;
+ 
+ /* QTD TOTAIS DE VENDAS DA EMPRESA COM A SUBCONSULTA */
+ SELECT SUM(QTD_VENDAS) AS QTD_VENDAS_EMPRESA
+ FROM(
+   SELECT strftime('%Y/%m', v.data_venda) AS ANO_MES, f.nome AS NOME_FORNECEDOR, COUNT(iv.produto_id) AS QTD_VENDAS
+   FROM itens_venda iv
+   JOIN vendas v ON v.id_venda = iv.venda_id
+   JOIN produtos p ON p.id_produto = iv.produto_id
+   JOIN fornecedores f on f.id_fornecedor = p.fornecedor_id
+   GROUP BY NOME_FORNECEDOR, ANO_MES
+   ORDER BY ANO_MES, QTD_VENDAS);
+   
+ /* FORNECEDOR COM A PIOR PERFOMANCE EM TODO O TEMPO DA EMPRESA */
+ SELECT strftime('%Y/%m', v.data_venda) AS ANO_MES, COUNT(iv.produto_id) AS QTD_VENDAS
+ FROM itens_venda iv
+ JOIN vendas v ON v.id_venda = iv.venda_id
+ JOIN produtos p ON p.id_produto = iv.produto_id
+ JOIN fornecedores f on f.id_fornecedor = p.fornecedor_id
+ WHERE f.nome = 'NebulaNetworks'
+ GROUP BY f.nome, ANO_MES
+ ORDER BY ANO_MES, QTD_VENDAS;
+ 
+ /* VERIFICANDO OS COMPARATIVOS - 2 MELHORES FORNECEDORES*/
+ SELECT strftime('%Y/%m', v.data_venda) AS ANO_MES, f.nome AS NOME_FORNECEDOR, COUNT(iv.produto_id) AS QTD_VENDAS
+ FROM itens_venda iv
+ JOIN vendas v ON v.id_venda = iv.venda_id
+ JOIN produtos p ON p.id_produto = iv.produto_id
+ JOIN fornecedores f on f.id_fornecedor = p.fornecedor_id
+ WHERE NOME_FORNECEDOR = 'NebulaNetworks' or NOME_FORNECEDOR = 'AstroSupply' or NOME_FORNECEDOR = 'HorizonDistributors'
+ GROUP BY NOME_FORNECEDOR, ANO_MES
+ ORDER BY ANO_MES, QTD_VENDAS;
+ 
+ /*PARA A EMPRESA UTILIZAR NO CSV */
+ SELECT ANO_MES,
+ SUM(CASE WHEN NOME_FORNECEDOR == 'NebulaNetworks' THEN QTD_VENDAS ELSE 0 END) AS QTD_VENDAS_NebulaNetworks,
+ SUM(CASE WHEN NOME_FORNECEDOR == 'HorizonDistributors' THEN QTD_VENDAS ELSE 0 END) AS QTD_VENDAS_HorizonDistributors,
+ SUM(CASE WHEN NOME_FORNECEDOR == 'AstroSupply' THEN QTD_VENDAS ELSE 0 END) AS QTD_VENDAS_AstroSupply
+ FROM (
+   SELECT strftime('%Y/%m', v.data_venda) AS ANO_MES, f.nome AS NOME_FORNECEDOR, COUNT(iv.produto_id) AS QTD_VENDAS
+   FROM itens_venda iv
+   JOIN vendas v ON v.id_venda = iv.venda_id
+   JOIN produtos p ON p.id_produto = iv.produto_id
+   JOIN fornecedores f on f.id_fornecedor = p.fornecedor_id
+   WHERE NOME_FORNECEDOR = 'NebulaNetworks' or NOME_FORNECEDOR = 'AstroSupply' or NOME_FORNECEDOR = 'HorizonDistributors'
+   GROUP BY NOME_FORNECEDOR, ANO_MES
+   ORDER BY ANO_MES, QTD_VENDAS)
+   GROUP BY ANO_MES;
+   
+ /* % DAS CATEGORIAS DE VENDAS */
+ 
+ /* QTD DE VENDAS TOTAIS QUE PRECISAMOS SABER ANTES DE VERIFICAR A % E UTILIZAR NA SUBCONSULTA*/
+ SELECT COUNT(iv.produto_id) AS QTD_VENDAS
+ FROM itens_venda iv;
+ 
+ /*QTS DE VENDAS POR CATEGORIA */
+ SELECT c.nome_categoria AS NOME_CATEGORIA, COUNT(iv.produto_id) AS QTD_VENDAS
+ FROM itens_venda iv
+ JOIN vendas v ON v.id_venda = iv.venda_id
+ JOIN produtos p ON p.id_produto = iv.produto_id
+ JOIN categorias c ON c.id_categoria = p.categoria_id
+ GROUP BY NOME_CATEGORIA
+ ORDER BY QTD_VENDAS DESC;
+ 
+ /* SUBCONSULTA PARA TER A % */
+ 
+ SELECT NOME_CATEGORIA, QTD_VENDAS, ROUND(100.0*QTD_VENDAS/(SELECT COUNT(*) FROM itens_venda), 2) || '%' AS PORCENTAGEM
+ FROM(
+   SELECT c.nome_categoria AS NOME_CATEGORIA, COUNT(iv.produto_id) AS QTD_VENDAS
+   FROM itens_venda iv
+   JOIN vendas v ON v.id_venda = iv.venda_id
+   JOIN produtos p ON p.id_produto = iv.produto_id
+   JOIN categorias c ON c.id_categoria = p.categoria_id
+   GROUP BY NOME_CATEGORIA
+   ORDER BY QTD_VENDAS DESC);
+   
+  /* PERFORMANCE GERAL DA EMPRESA - ANALISE DE SAZONALIDADE */
+  /* QTS DE VENDAS POR MES E ANO */
+  SELECT strftime('%Y/%m', data_venda) AS ANO_MES, COUNT(*) AS QTD_VENDAS
+  FROM vendas
+  GROUP BY ANO_MES
+  
+  /* SEPARANDO O MES E ANO COM A QTD DE VENDAS */
+  SELECT strftime('%m', data_venda) AS MES, strftime('%Y', data_venda) AS ANO, COUNT(*) AS QTD_VENDAS
+  FROM vendas
+  GROUP BY MES, ANO
+  ORDER BY MES, ANO;
+  
+  /* SUBCONSULTA */
+  /* CONFIRMAR A SAZONALIDADE EM JAN, NOV, DEZ) */
+  SELECT MES,
+  SUM(CASE WHEN ANO =='2020' THEN QTD_VENDAS ELSE 0 END) AS '2020',
+  SUM(CASE WHEN ANO =='2021' THEN QTD_VENDAS ELSE 0 END) AS '2021',
+  SUM(CASE WHEN ANO =='2022' THEN QTD_VENDAS ELSE 0 END) AS '2022',
+  SUM(CASE WHEN ANO =='2023' THEN QTD_VENDAS ELSE 0 END) AS '2023'
+  FROM(
+  SELECT strftime('%m', data_venda) AS MES, strftime('%Y', data_venda) AS ANO, COUNT(*) AS QTD_VENDAS
+  FROM vendas
+  GROUP BY MES, ANO
+  ORDER BY MES, ANO)
+  GROUP BY MES;
+  
+  /* ACOMPANHAR AS METRICAS DE VENDA 2023 (KPI) */
+  /* UTILIZAR A QTD DE VENDAS Q EXISTE NA BF DOS ANOS ANTERIORES, UMA MÉDIA DESSAS VENDAS */
+  /* QTD DE VENDA DO ANO ATUAL 2023 E UMA % DE QTD QUE SUPEROU A BF */
+  /* COMO ESTAMOS MONTANDO A METRICA ANTES DA BF DE 2023 EXISTIR, POIS NÃO TEMOS DADOS DE 11/2023
+  IREMOS TRABALAHR COMO DE 2022 COMO SE FOSSE O ANO QUE QUEREMOS MEDIR ESTA METRICA 
+  DEIXAR FACIL DE ALTERAR QUANDO CHEGAR EM 11/2023*/
+  /* UTILIZANDO OS DADOS DE 2020/2021 */
+  SELECT COUNT(*) AS QTD_VENDAS, strftime('%Y', v.data_venda) as ANO
+  FROM vendas v
+  WHERE strftime('%m', v.data_venda) = '11'
+  AND ANO != '2022'
+  GROUP BY ANO;
+  
+  /* SUBCONSULTA DE MEDIA QTD DE VENDAS */
+  SELECT AVG(QTD_VENDAS) AS MEDIA_QTD_VENDAS
+  FROM(
+    SELECT COUNT(*) AS QTD_VENDAS, strftime('%Y', v.data_venda) as ANO
+    FROM vendas v
+    WHERE strftime('%m', v.data_venda) = '11'
+    AND ANO != '2022'
+    GROUP BY ANO);
+    
+  /* BF DE "AGORA" */
+  SELECT COUNT(*) AS QTD_VENDAS, strftime('%Y', v.data_venda) as ANO
+  FROM vendas v
+  WHERE strftime('%m', v.data_venda) = '11'
+  AND ANO = '2022'
+  GROUP BY ANO;
+  
+  /* SUBCONSULTA DE QTD DE VENDAS ATUAL 2022 */
+  SELECT QTD_VENDAS AS QTD_VENDAS_ATUAL
+  FROM(
+  SELECT COUNT(*) AS QTD_VENDAS, strftime('%Y', v.data_venda) as ANO
+  FROM vendas v
+  WHERE strftime('%m', v.data_venda) = '11'
+  AND ANO = '2022'
+  GROUP BY ANO);
+  
+  /* QTD DE % PRA VERIFICAR DOS ANOS NA BF */
+  /* WITH - TABELAS TEMPORÁRIAS */
+  /*PORCENTAGEM DO VALOR DO ANO 2022 QUE SUPEROU A BF DOS ANOS ANTERIORES */
+WITH MEDIA_VENDAS_ANTERIORES AS (  SELECT AVG(QTD_VENDAS) AS MEDIA_QTD_VENDAS
+  FROM(
+    SELECT COUNT(*) AS QTD_VENDAS, strftime('%Y', v.data_venda) as ANO
+    FROM vendas v
+    WHERE strftime('%m', v.data_venda) = '11'
+    AND ANO != '2022'
+    GROUP BY ANO)), VENDAS_ATUAL AS (  SELECT QTD_VENDAS AS QTD_VENDAS_ATUAL
+  FROM(
+  SELECT COUNT(*) AS QTD_VENDAS, strftime('%Y', v.data_venda) as ANO
+  FROM vendas v
+  WHERE strftime('%m', v.data_venda) = '11'
+  AND ANO = '2022'
+  GROUP BY ANO))
+  SELECT mva.MEDIA_QTD_VENDAS, va.QTD_VENDAS_ATUAL,
+  ROUND((va.QTD_VENDAS_ATUAL - mva.MEDIA_QTD_VENDAS)/mva.MEDIA_QTD_VENDAS *100.0, 2) || '%' AS PORCENTAGEM
+  FROM VENDAS_ATUAL va, MEDIA_VENDAS_ANTERIORES mva;
+  
